@@ -62,17 +62,14 @@ jobs:
           }
       
 
-      - name: Update API service in Swarm
+      - name: Update API in Swarm
         run: |
-          docker service update --force \
-            --image inventory-api:latest \
-            inventory_inventory-api
+          docker service update --force --image inventory-api:latest inventory_inventory-api
 
-      - name: Update Frontend service in Swarm
+      - name: Update Frontend in Swarm
         run: |
-          docker service update --force \
-            --image inventory-frontend:latest \
-            inventory_frontend
+          docker service update --force --image inventory-frontend:latest inventory_frontend
+      
 
       - name: Show service list (debug)
         run: docker service ls
