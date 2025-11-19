@@ -4,11 +4,9 @@ from typing import List, Optional
 
 app = FastAPI(
     title="Retail Inventory Service",
-    description="Простой сервис инвентаризации для ритейла с филиалами (демо для курсовой)",
-    version="0.1.0",
 )
 
-# ==== Модели данных ====
+
 
 
 class StoreCreate(BaseModel):
