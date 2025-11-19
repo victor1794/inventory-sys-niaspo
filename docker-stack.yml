@@ -1,0 +1,85 @@
+version: "3.9"
+
+services:
+  inventory-api:
+    image: inventory-api:local
+    deploy:
+      replicas: 2                 # кластеризация API
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1            # обновляем по одному контейнеру
+        delay: 5s                 # задержка между обновлениями
+    environment:
+      - DATABASE_URL=postgresql://inventory_user:inventory_password@db:5432/inventory_db
+      - REDIS_HOST=redis
+    ports:
+      - "8000:8000"               # внешний доступ
+    networks:
+      - backend_net
+      - frontend_net
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=inventory_db
+      - POSTGRES_USER=inventory_user
+      - POSTGRES_PASSWORD=inventory_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    deploy:
+      placement:
+        constraints: [node.role == manager]   # база всегда на менеджере
+    networks:
+      - backend_net
+
+  redis:
+    image: redis:7-alpine
+    deploy:
+      replicas: 1
+    networks:
+      - backend_net
+
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    deploy:
+      replicas: 1
+    networks:
+      - backend_net
+
+  frontend:
+    build:
+      context: ./frontend
+    image: inventory-frontend:local
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "80:80"
+    networks:
+      - frontend_net
+      - backend_net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    deploy:
+      replicas: 1
+    ports:
+      - "9110:8080"
+    networks:
+      - monitoring_net
+      - backend_net
+
+networks:
+  backend_net:
+    driver: overlay
+  frontend_net:
+    driver: overlay
+  monitoring_net:
+    driver: overlay
+
+volumes:
+  postgres_data:

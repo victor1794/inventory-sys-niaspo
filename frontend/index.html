@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Инвентаризация — Demo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Инвентаризация (Demo)</h1>
+
+  <section>
+    <h2>Филиалы</h2>
+    <button onclick="loadStores()">Обновить</button>
+    <ul id="stores"></ul>
+  </section>
+
+  <section>
+    <h2>Товары</h2>
+    <button onclick="loadProducts()">Обновить</button>
+    <ul id="products"></ul>
+  </section>
+
+  <section>
+    <h2>Остатки товаров</h2>
+    <input id="storeIdInput" placeholder="ID филиала">
+    <button onclick="loadStock()">Показать остатки</button>
+
+    <ul id="stock"></ul>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

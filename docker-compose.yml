@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+  inventory-api:
+    build: .
+    container_name: inventory-api
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://inventory_user:inventory_password@db:5432/inventory_db
+      - REDIS_HOST=redis
+    ports:
+      - "8000:8000"
+    networks:
+      - backend_net
+      - frontend_net
+
+  db:
+    image: postgres:16-alpine
+    container_name: inventory-db
+    environment:
+      - POSTGRES_DB=inventory_db
+      - POSTGRES_USER=inventory_user
+      - POSTGRES_PASSWORD=inventory_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: inventory-redis
+    networks:
+      - backend_net
+
+  adminer:
+    image: adminer
+    container_name: inventory-adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - backend_net
+
+  frontend:
+    build: ./frontend
+    container_name: inventory-frontend
+    ports:
+      - "80:80"
+    networks:
+      - frontend_net
+      - backend_net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: inventory-cadvisor
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - monitoring_net
+
+networks:
+  backend_net:
+  frontend_net:
+  monitoring_net:
+
+volumes:
+  postgres_data:
