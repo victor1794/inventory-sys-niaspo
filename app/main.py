@@ -146,3 +146,20 @@ def upsert_stock(item_in: StockItemCreate):
     new_item = StockItem(**item_in.dict())
     stock.append(new_item)
     return new_item
+
+@app.post("/dev/reset", tags=["dev"])
+def reset_all():
+    """
+    Полная очистка всей оперативной памяти API.
+    Без защиты. Только для разработки.
+    """
+    global stores, products, stock_items, store_id_counter, product_id_counter
+
+    stores.clear()
+    products.clear()
+    stock_items.clear()
+
+    store_id_counter = 1
+    product_id_counter = 1
+
+    return {"status": "ok", "message": "All in-memory data cleared"}
