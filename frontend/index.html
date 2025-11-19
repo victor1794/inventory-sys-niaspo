@@ -1,112 +1,33 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Inventory System – Панель управления</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 30px auto;
-            padding: 10px;
-        }
-
-        input, button {
-            padding: 10px;
-            margin: 5px 0;
-            font-size: 16px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        td, th {
-            border: 1px solid #aaa;
-            padding: 8px;
-        }
-
-        button.delete {
-            background: #d9534f;
-            color: white;
-            border: none;
-            padding: 6px 10px;
-            cursor: pointer;
-        }
-
-        button.delete:hover {
-            background: #c9302c;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Инвентаризация — Demo</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
+  <h1>Инвентаризация (Demo)</h1>
 
-<h2>Управление магазинами</h2>
+  <section>
+    <h2>Филиалы</h2>
+    <button onclick="loadStores()">Обновить</button>
+    <ul id="stores"></ul>
+  </section>
 
-<input id="storeName" type="text" placeholder="Название магазина">
-<button onclick="addStore()">Добавить магазин</button>
+  <section>
+    <h2>Товары</h2>
+    <button onclick="loadProducts()">Обновить</button>
+    <ul id="products"></ul>
+  </section>
 
-<h3>Список магазинов</h3>
-<table id="storesTable">
-    <thead>
-    <tr>
-        <th>ID</th>
-        <th>Название</th>
-        <th>Удалить</th>
-    </tr>
-    </thead>
-    <tbody></tbody>
-</table>
+  <section>
+    <h2>Остатки товаров</h2>
+    <input id="storeIdInput" placeholder="ID филиала">
+    <button onclick="loadStock()">Показать остатки</button>
 
-<script>
-    const API = "http://localhost:8000";
+    <ul id="stock"></ul>
+  </section>
 
-    async function loadStores() {
-        const resp = await fetch(`${API}/stores`);
-        const stores = await resp.json();
-
-        const tbody = document.querySelector("#storesTable tbody");
-        tbody.innerHTML = "";
-
-        stores.forEach(store => {
-            const tr = document.createElement("tr");
-
-            tr.innerHTML = `
-                <td>${store.id}</td>
-                <td>${store.name}</td>
-                <td>
-                    <button class="delete" onclick="deleteStore(${store.id})">X</button>
-                </td>
-            `;
-
-            tbody.appendChild(tr);
-        });
-    }
-
-    async function addStore() {
-        const name = document.getElementById("storeName").value;
-        if (!name.trim()) return alert("Введите название");
-
-        await fetch(`${API}/stores`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ name })
-        });
-
-        document.getElementById("storeName").value = "";
-        loadStores();
-    }
-
-    async function deleteStore(id) {
-        await fetch(`${API}/stores/${id}`, { method: "DELETE" });
-        loadStores();
-    }
-
-    loadStores();
-</script>
-
+  <script src="app.js"></script>
 </body>
 </html>
