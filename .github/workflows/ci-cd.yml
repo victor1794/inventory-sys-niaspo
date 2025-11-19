@@ -46,7 +46,11 @@ jobs:
 
       - name: Build Frontend image
         run: |
-          docker build -t inventory-frontend:latest ./frontend
+          for i in {1..5}; do
+            docker build -t inventory-frontend:latest ./frontend && break
+            echo "Build failed, retrying in 5s..."
+            sleep 5
+          done
 
       - name: Update API service in Swarm
         run: |
