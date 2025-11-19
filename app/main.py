@@ -7,7 +7,9 @@ app = FastAPI(
 )
 
 
-
+# ==========================
+#   СХЕМЫ (Pydantic-модели)
+# ==========================
 
 class StoreCreate(BaseModel):
     name: str
@@ -37,7 +39,9 @@ class StockItem(StockItemCreate):
     pass
 
 
-# ==== "База данных" в памяти ====
+# ==========================
+#   "БАЗА ДАННЫХ" В ПАМЯТИ
+# ==========================
 
 stores: List[Store] = []
 products: List[Product] = []
@@ -48,6 +52,9 @@ _product_id_seq = 1
 
 
 def get_next_store_id() -> int:
+    """
+    Генерация следующего ID для магазина.
+    """
     global _store_id_seq
     value = _store_id_seq
     _store_id_seq += 1
@@ -55,6 +62,9 @@ def get_next_store_id() -> int:
 
 
 def get_next_product_id() -> int:
+    """
+    Генерация следующего ID для товара.
+    """
     global _product_id_seq
     value = _product_id_seq
     _product_id_seq += 1
@@ -63,103 +73,137 @@ def get_next_product_id() -> int:
 
 def reset_state_for_tests():
     """
-    Хелпер, чтобы удобно сбрасывать состояние в тестах.
-    В боевом коде не используется, только для pytest.
+    Хелпер, чтобы удобно сбрасывать состояние в тестах/разработке.
+    Используется в тестах и в dev-эндпоинте.
     """
     global _store_id_seq, _product_id_seq
+
     stores.clear()
     products.clear()
     stock.clear()
+
     _store_id_seq = 1
     _product_id_seq = 1
 
 
-# ==== Служебный эндпоинт ====
-
+# ==========================
+#   СЛУЖЕБНЫЙ ЭНДПОЙНТ
+# ==========================
 
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
 
-# ==== CRUD по филиалам ====
-
+# ==========================
+#   CRUD ПО ФИЛИАЛАМ
+# ==========================
 
 @app.get("/stores", response_model=List[Store])
 def list_stores():
+    """
+    Получить список всех магазинов.
+    """
     return stores
 
 
 @app.post("/stores", response_model=Store, status_code=201)
 def create_store(store_in: StoreCreate):
-    new_store = Store(id=get_next_store_id(), **store_in.dict())
+    """
+    Создать новый магазин.
+    """
+    # В pydantic v2 .model_dump() вместо .dict()
+    data = store_in.model_dump()
+    new_store = Store(id=get_next_store_id(), **data)
     stores.append(new_store)
     return new_store
 
 
-# ==== CRUD по товарам ====
-
+# ==========================
+#   CRUD ПО ТОВАРАМ
+# ==========================
 
 @app.get("/products", response_model=List[Product])
 def list_products():
+    """
+    Получить список всех товаров.
+    """
     return products
 
 
 @app.post("/products", response_model=Product, status_code=201)
 def create_product(product_in: ProductCreate):
-    new_product = Product(id=get_next_product_id(), **product_in.dict())
+    """
+    Создать новый товар.
+    """
+    data = product_in.model_dump()
+    new_product = Product(id=get_next_product_id(), **data)
     products.append(new_product)
     return new_product
 
 
-# ==== Остатки (stock) ====
-
+# ==========================
+#   ОСТАТКИ (STOCK)
+# ==========================
 
 @app.get("/stock", response_model=List[StockItem])
 def list_stock(
     store_id: Optional[int] = None,
     product_id: Optional[int] = None,
 ):
+    """
+    Получить остатки по всем магазинам / товарам.
+    Можно фильтровать по store_id и/или product_id.
+    """
     result = stock
+
     if store_id is not None:
         result = [s for s in result if s.store_id == store_id]
+
     if product_id is not None:
         result = [s for s in result if s.product_id == product_id]
+
     return result
 
 
 @app.post("/stock", response_model=StockItem, status_code=201)
 def upsert_stock(item_in: StockItemCreate):
-    # Проверяем, что филиал и товар существуют
+    """
+    Обновить или создать запись по остаткам для пары (store_id, product_id).
+    Если такой записи нет — создаётся новая.
+    Если есть — обновляется quantity.
+    """
+
+    # Проверяем, что магазин существует
     if not any(s.id == item_in.store_id for s in stores):
         raise HTTPException(status_code=400, detail="Store not found")
+
+    # Проверяем, что товар существует
     if not any(p.id == item_in.product_id for p in products):
         raise HTTPException(status_code=400, detail="Product not found")
 
-    # Ищем существующую запись по паре (store_id, product_id)
+    # Ищем существующую запись
     for item in stock:
         if item.store_id == item_in.store_id and item.product_id == item_in.product_id:
             item.quantity = item_in.quantity
             return item
 
     # Если не нашли — создаём новую
-    new_item = StockItem(**item_in.dict())
+    data = item_in.model_dump()
+    new_item = StockItem(**data)
     stock.append(new_item)
     return new_item
 
+
+# ==========================
+#   DEV-ЭНДПОЙНТ ДЛЯ ОЧИСТКИ
+# ==========================
+
 @app.post("/dev/reset", tags=["dev"])
-def reset_all():
+def dev_reset():
     """
-    Полная очистка всей оперативной памяти API.
-    Без защиты. Только для разработки.
+    Полная очистка всей оперативной "базы данных".
+    Без аутентификации, чисто для разработки/тестов.
     """
-    global stores, products, stock_items, store_id_counter, product_id_counter
-
-    stores.clear()
-    products.clear()
-    stock_items.clear()
-
-    store_id_counter = 1
-    product_id_counter = 1
-
+    reset_state_for_tests()
     return {"status": "ok", "message": "All in-memory data cleared"}
