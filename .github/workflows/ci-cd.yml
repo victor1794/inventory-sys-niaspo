@@ -45,6 +45,7 @@ jobs:
           docker build -t inventory-api:latest .
 
       - name: Build Frontend image
+        shell: bash
         run: |
           for i in {1..5}; do
             docker build -t inventory-frontend:latest ./frontend && break
