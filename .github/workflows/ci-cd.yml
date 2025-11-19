@@ -45,13 +45,23 @@ jobs:
           docker build -t inventory-api:latest .
 
       - name: Build Frontend image
-        shell: bash
+        shell: pwsh
         run: |
-          for i in {1..5}; do
-            docker build -t inventory-frontend:latest ./frontend && break
-            echo "Build failed, retrying in 5s..."
-            sleep 5
-          done
+          for ($i = 1; $i -le 5; $i++) {
+            Write-Host "Attempt $i to build frontend..."
+            docker build -t inventory-frontend:latest ./frontend
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Frontend build succeeded."
+              break
+            }
+            Write-Host "Build failed. Retrying in 5 seconds..."
+            Start-Sleep -Seconds 5
+          }
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to build image after 5 attempts"
+          }
+      
 
       - name: Update API service in Swarm
         run: |
