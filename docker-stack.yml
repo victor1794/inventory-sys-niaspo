@@ -33,13 +33,6 @@ services:
     networks:
       - backend_net
 
-  redis:
-    image: redis:7-alpine
-    deploy:
-      replicas: 1
-    networks:
-      - backend_net
-
   adminer:
     image: adminer
     ports:

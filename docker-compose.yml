@@ -6,7 +6,6 @@ services:
     container_name: inventory-api
     depends_on:
       - db
-      - redis
     environment:
       - DATABASE_URL=postgresql://inventory_user:inventory_password@db:5432/inventory_db
       - REDIS_HOST=redis
@@ -25,12 +24,6 @@ services:
       - POSTGRES_PASSWORD=inventory_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - backend_net
-
-  redis:
-    image: redis:7-alpine
-    container_name: inventory-redis
     networks:
       - backend_net
 
