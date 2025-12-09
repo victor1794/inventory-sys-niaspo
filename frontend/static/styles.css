@@ -93,7 +93,7 @@ button.danger {
 }
 
 button.danger:hover {
-    background: #c9302c;
+    background: rgba(255, 0, 0, 0.58);
 }
 
 .table-title {

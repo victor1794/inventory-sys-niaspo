@@ -97,7 +97,7 @@ async function loadStores() {
                 <td>${store.name}</td>
                 <td>${store.city}</td>
                 <td class="table-actions">
-                    <button class="btn-small danger" onclick="deleteStore(${store.id})">🗑️ Удалить</button>
+                    <button class="btn-small danger" onclick="deleteStore(${store.id})"> Удалить</button>
                 </td>
             `;
             tbody.appendChild(row);
@@ -168,7 +168,7 @@ async function loadProducts() {
                 <td>${product.name}</td>
                 <td>${product.sku}</td>
                 <td class="table-actions">
-                    <button class="btn-small danger" onclick="deleteProduct(${product.id})">🗑️ Удалить</button>
+                    <button class="btn-small danger" onclick="deleteProduct(${product.id})">Удалить</button>
                 </td>
             `;
             tbody.appendChild(row);
