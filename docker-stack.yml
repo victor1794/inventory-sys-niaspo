@@ -1,23 +1,24 @@
 version: "3.9"
 
 services:
+
   inventory-api:
-    image: inventory-api:local
+    image: inventory-api:latest
     deploy:
-      replicas: 2                 # кластеризация API
+      replicas: 2
       restart_policy:
         condition: on-failure
       update_config:
-        parallelism: 1            # обновляем по одному контейнеру
-        delay: 5s                 # задержка между обновлениями
+        parallelism: 1
+        delay: 5s
     environment:
       - DATABASE_URL=postgresql://inventory_user:inventory_password@db:5432/inventory_db
-      - REDIS_HOST=redis
     ports:
-      - "8000:8000"               # внешний доступ
+      - "8000:8000"
     networks:
       - backend_net
       - frontend_net
+
 
   db:
     image: postgres:16-alpine
@@ -29,9 +30,10 @@ services:
       - postgres_data:/var/lib/postgresql/data
     deploy:
       placement:
-        constraints: [node.role == manager]   # база всегда на менеджере
+        constraints: [node.role == manager]
     networks:
       - backend_net
+
 
   adminer:
     image: adminer
@@ -42,30 +44,40 @@ services:
     networks:
       - backend_net
 
+
   frontend:
-    build:
-      context: ./frontend
-    image: inventory-frontend:local
+    image: inventory-frontend:latest
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 5s
     ports:
       - "80:80"
     networks:
       - frontend_net
       - backend_net
 
+
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
-    deploy:
-      replicas: 1
     ports:
       - "9110:8080"
+    deploy:
+      replicas: 1
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
     networks:
       - monitoring_net
       - backend_net
 
+
+# --- Networks ---
 networks:
   backend_net:
     driver: overlay
@@ -74,5 +86,7 @@ networks:
   monitoring_net:
     driver: overlay
 
+
+# --- Volumes ---
 volumes:
   postgres_data:
