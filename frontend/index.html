@@ -5,43 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Retail Inventory System</title>
     <link rel="stylesheet" href="static/styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="wrapper">
-        <h1><i class="fas fa-store"></i> Retail Inventory System</h1>
+        <h1>Retail Inventory System</h1>
 
         <div class="cards">
             <!-- Добавить магазин -->
             <div class="card">
-                <h2><i class="fas fa-building"></i> Добавить магазин</h2>
+                <h2>Добавить магазин</h2>
                 <input type="text" id="store-name" placeholder="Название магазина">
                 <input type="text" id="store-city" placeholder="Город">
-                <button onclick="addStore()"><i class="fas fa-plus-circle"></i> Создать магазин</button>
+                <button onclick="addStore()">Создать магазин</button>
             </div>
 
             <!-- Добавить товар -->
             <div class="card">
-                <h2><i class="fas fa-box"></i> Добавить товар</h2>
+                <h2>Добавить товар</h2>
                 <input type="text" id="product-name" placeholder="Название товара">
                 <input type="text" id="product-sku" placeholder="Артикул (SKU)">
-                <button onclick="addProduct()"><i class="fas fa-plus-circle"></i> Создать товар</button>
+                <button onclick="addProduct()">Создать товар</button>
             </div>
 
             <!-- Управление остатками -->
             <div class="card">
-                <h2><i class="fas fa-chart-bar"></i> Управление остатками</h2>
+                <h2>Управление остатками</h2>
                 <input type="number" id="stock-store" placeholder="ID магазина">
                 <input type="number" id="stock-product" placeholder="ID товара">
                 <input type="number" id="stock-qty" placeholder="Количество" value="0">
-                <button onclick="addStock()"><i class="fas fa-save"></i> Сохранить остатки</button>
-                <button class="secondary" onclick="loadStock()"><i class="fas fa-sync"></i> Обновить таблицу</button>
-                <button class="danger" onclick="clearAllData()"><i class="fas fa-trash"></i> Очистить ВСЕ данные</button>
+                <button onclick="addStock()">Сохранить остатки</button>
+                <button class="secondary" onclick="loadStock()">Обновить таблицу</button>
+                <button class="danger" onclick="clearAllData()">Очистить ВСЕ данные</button>
             </div>
         </div>
 
         <!-- Таблица магазинов -->
-        <h2 class="table-title"><i class="fas fa-store"></i> Магазины</h2>
+        <h2 class="table-title">Магазины</h2>
         <table id="stores-table">
             <thead>
                 <tr>
@@ -59,7 +58,7 @@
         </table>
 
         <!-- Таблица товаров -->
-        <h2 class="table-title"><i class="fas fa-box"></i> Товары</h2>
+        <h2 class="table-title">Товары</h2>
         <table id="products-table">
             <thead>
                 <tr>
@@ -77,7 +76,7 @@
         </table>
 
         <!-- Таблица остатков -->
-        <h2 class="table-title"><i class="fas fa-chart-bar"></i> Остатки</h2>
+        <h2 class="table-title">Остатки</h2>
         <table id="stock-table">
             <thead>
                 <tr>
@@ -94,9 +93,8 @@
             </tbody>
         </table>
 
-        <div style="text-align: center; margin-top: 40px; color: #666; font-size: 14px;">
+        <div style="text-align: center; margin-top: 30px; color: #666; font-size: 12px;">
             <p>Retail Inventory System v1.0 | API: <span id="api-status">Не подключен</span></p>
-            <p>Для работы системы запустите сервер: <code>uvicorn app.main:app --reload</code></p>
         </div>
     </div>
 
@@ -108,20 +106,19 @@
                 const response = await fetch('http://localhost:8000/health');
                 const statusEl = document.getElementById('api-status');
                 if (response.ok) {
-                    statusEl.textContent = 'Подключен ✓';
-                    statusEl.style.color = '#4CAF50';
+                    statusEl.textContent = 'Подключен';
+                    statusEl.style.color = '#5cb85c';
                 } else {
                     statusEl.textContent = 'Ошибка подключения';
-                    statusEl.style.color = '#f44336';
+                    statusEl.style.color = '#d9534f';
                 }
             } catch (error) {
                 const statusEl = document.getElementById('api-status');
                 statusEl.textContent = 'Сервер не запущен';
-                statusEl.style.color = '#f44336';
+                statusEl.style.color = '#d9534f';
             }
         }
 
-        // Проверяем статус API каждые 10 секунд
         document.addEventListener('DOMContentLoaded', () => {
             checkApiStatus();
             setInterval(checkApiStatus, 10000);
