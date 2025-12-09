@@ -1,33 +1,66 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Инвентаризация — Demo</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <title>Retail Inventory System</title>
+    <link rel="stylesheet" href="static/styles.css">
 </head>
 <body>
-  <h1>Инвентаризация (Demo)</h1>
+<div class="wrapper">
 
-  <section>
-    <h2>Филиалы</h2>
-    <button onclick="loadStores()">Обновить</button>
-    <ul id="stores"></ul>
-  </section>
+    <h1>Retail Inventory Dashboard</h1>
 
-  <section>
-    <h2>Товары</h2>
-    <button onclick="loadProducts()">Обновить</button>
-    <ul id="products"></ul>
-  </section>
+    <div class="cards">
+        <div class="card">
+            <h2>Добавить магазин</h2>
+            <input id="store-name" placeholder="Название">
+            <input id="store-city" placeholder="Город">
+            <button onclick="addStore()">Создать магазин</button>
+        </div>
 
-  <section>
-    <h2>Остатки товаров</h2>
-    <input id="storeIdInput" placeholder="ID филиала">
-    <button onclick="loadStock()">Показать остатки</button>
+        <div class="card">
+            <h2>Добавить товар</h2>
+            <input id="product-name" placeholder="Название">
+            <input id="product-sku" placeholder="Артикул">
+            <button onclick="addProduct()">Создать товар</button>
+        </div>
 
-    <ul id="stock"></ul>
-  </section>
+        <div class="card">
+            <h2>Добавить остатки</h2>
+            <input id="stock-store" placeholder="ID магазина" type="number">
+            <input id="stock-product" placeholder="ID товара" type="number">
+            <input id="stock-qty" placeholder="Количество" type="number">
+            <button onclick="addStock()">Добавить/обновить</button>
+        </div>
+    </div>
 
-  <script src="app.js"></script>
+    <h2 class="table-title">Магазины</h2>
+    <table id="stores-table">
+        <thead>
+        <tr><th>ID</th><th>Название</th><th>Город</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h2 class="table-title">Товары</h2>
+    <table id="products-table">
+        <thead>
+        <tr><th>ID</th><th>Название</th><th>SKU</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h2 class="table-title">Остатки</h2>
+    <table id="stock-table">
+        <thead>
+        <tr><th>Store ID</th><th>Product ID</th><th>Quantity</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+</div>
+
+<script src="static/script.js"></script>
+
 </body>
 </html>
