@@ -1,22 +1,25 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
-from fastapi.middleware.cors import CORSMiddleware
-app = FastAPI(
-    title="Retail Inventory Service",
-)
+
+app = FastAPI()
+
+# Разрешить CORS для фронтенда
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Для разработки можно разрешить все
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ==========================
-#   СХЕМЫ (Pydantic-модели)
-# ==========================
+# Раздаем статические файлы
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
+
+# Модели данных
 class StoreCreate(BaseModel):
     name: str
     city: str
@@ -28,7 +31,7 @@ class Store(StoreCreate):
 
 class ProductCreate(BaseModel):
     name: str
-    sku: str  # уникальный код товара (артикул)
+    sku: str
 
 
 class Product(ProductCreate):
@@ -45,184 +48,117 @@ class StockItem(StockItemCreate):
     pass
 
 
-# ==========================
-#   "БАЗА ДАННЫХ" В ПАМЯТИ
-# ==========================
+# "База данных" в памяти
+stores_db = []
+products_db = []
+stock_db = []
 
-stores: List[Store] = []
-products: List[Product] = []
-stock: List[StockItem] = []
-
-_store_id_seq = 1
-_product_id_seq = 1
+store_id_counter = 1
+product_id_counter = 1
 
 
-def get_next_store_id() -> int:
-    """
-    Генерация следующего ID для магазина.
-    """
-    global _store_id_seq
-    value = _store_id_seq
-    _store_id_seq += 1
-    return value
+@app.get("/")
+def read_root():
+    return {"message": "Retail API работает!"}
 
-
-def get_next_product_id() -> int:
-    """
-    Генерация следующего ID для товара.
-    """
-    global _product_id_seq
-    value = _product_id_seq
-    _product_id_seq += 1
-    return value
-
-
-def reset_state_for_tests():
-    """
-    Хелпер, чтобы удобно сбрасывать состояние в тестах/разработке.
-    Используется в тестах и в dev-эндпоинте.
-    """
-    global _store_id_seq, _product_id_seq
-
-    stores.clear()
-    products.clear()
-    stock.clear()
-
-    _store_id_seq = 1
-    _product_id_seq = 1
-
-
-# ==========================
-#   СЛУЖЕБНЫЙ ЭНДПОЙНТ
-# ==========================
 
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
 
-# ==========================
-#   CRUD ПО ФИЛИАЛАМ
-# ==========================
-
-@app.get("/stores", response_model=List[Store])
-def list_stores():
-    """
-    Получить список всех магазинов.
-    """
-    return stores
+# Магазины
+@app.get("/stores")
+def get_stores():
+    return stores_db
 
 
-@app.post("/stores", response_model=Store, status_code=201)
-def create_store(store_in: StoreCreate):
-    """
-    Создать новый магазин.
-    """
-    # В pydantic v2 .model_dump() вместо .dict()
-    data = store_in.model_dump()
-    new_store = Store(id=get_next_store_id(), **data)
-    stores.append(new_store)
+@app.post("/stores")
+def create_store(store: StoreCreate):
+    global store_id_counter
+    new_store = Store(
+        id=store_id_counter,
+        name=store.name,
+        city=store.city
+    )
+    store_id_counter += 1
+    stores_db.append(new_store)
     return new_store
 
 
-# ==========================
-#   CRUD ПО ТОВАРАМ
-# ==========================
-
-@app.get("/products", response_model=List[Product])
-def list_products():
-    """
-    Получить список всех товаров.
-    """
-    return products
+# Товары
+@app.get("/products")
+def get_products():
+    return products_db
 
 
-@app.post("/products", response_model=Product, status_code=201)
-def create_product(product_in: ProductCreate):
-    """
-    Создать новый товар.
-    """
-    data = product_in.model_dump()
-    new_product = Product(id=get_next_product_id(), **data)
-    products.append(new_product)
+@app.post("/products")
+def create_product(product: ProductCreate):
+    global product_id_counter
+    new_product = Product(
+        id=product_id_counter,
+        name=product.name,
+        sku=product.sku
+    )
+    product_id_counter += 1
+    products_db.append(new_product)
     return new_product
 
 
-# ==========================
-#   ОСТАТКИ (STOCK)
-# ==========================
-
-@app.get("/stock", response_model=List[StockItem])
-def list_stock(
-    store_id: Optional[int] = None,
-    product_id: Optional[int] = None,
-):
-    """
-    Получить остатки по всем магазинам / товарам.
-    Можно фильтровать по store_id и/или product_id.
-    """
-    result = stock
+# Остатки
+@app.get("/stock")
+def get_stock(store_id: Optional[int] = None, product_id: Optional[int] = None):
+    result = stock_db
 
     if store_id is not None:
-        result = [s for s in result if s.store_id == store_id]
+        result = [item for item in result if item.store_id == store_id]
 
     if product_id is not None:
-        result = [s for s in result if s.product_id == product_id]
+        result = [item for item in result if item.product_id == product_id]
 
     return result
 
 
-@app.post("/stock", response_model=StockItem, status_code=201)
-def upsert_stock(item_in: StockItemCreate):
-    """
-    Обновить или создать запись по остаткам для пары (store_id, product_id).
-    Если такой записи нет — создаётся новая.
-    Если есть — обновляется quantity.
-    """
-
-    # Проверяем, что магазин существует
-    if not any(s.id == item_in.store_id for s in stores):
+@app.post("/stock")
+def update_stock(item: StockItemCreate):
+    # Проверяем существование магазина
+    if not any(s.id == item.store_id for s in stores_db):
         raise HTTPException(status_code=400, detail="Store not found")
 
-    # Проверяем, что товар существует
-    if not any(p.id == item_in.product_id for p in products):
+    # Проверяем существование товара
+    if not any(p.id == item.product_id for p in products_db):
         raise HTTPException(status_code=400, detail="Product not found")
 
     # Ищем существующую запись
-    for item in stock:
-        if item.store_id == item_in.store_id and item.product_id == item_in.product_id:
-            item.quantity = item_in.quantity
-            return item
+    for i, stock_item in enumerate(stock_db):
+        if stock_item.store_id == item.store_id and stock_item.product_id == item.product_id:
+            stock_db[i].quantity = item.quantity
+            return stock_db[i]
 
-    # Если не нашли — создаём новую
-    data = item_in.model_dump()
-    new_item = StockItem(**data)
-    stock.append(new_item)
+    # Если не нашли, добавляем новую
+    new_item = StockItem(**item.model_dump())
+    stock_db.append(new_item)
     return new_item
 
 
-# ==========================
-#   DEV-ЭНДПОЙНТ ДЛЯ ОЧИСТКИ
-# ==========================
-
-@app.post("/dev/reset", tags=["dev"])
-def dev_reset():
-    """
-    Полная очистка всей оперативной "базы данных".
-    Без аутентификации, чисто для разработки/тестов.
-    """
-    reset_state_for_tests()
-    return {"status": "ok", "message": "All in-memory data cleared"}
-
-
-@app.delete("/stock", status_code=200)
-def delete_stock_item(store_id: int, product_id: int):
-    """
-    Удалить запись об остатках.
-    """
-    for i, item in enumerate(stock):
+# Удалить остатки
+@app.delete("/stock")
+def delete_stock(store_id: int, product_id: int):
+    for i, item in enumerate(stock_db):
         if item.store_id == store_id and item.product_id == product_id:
-            del stock[i]
-            return {"status": "deleted"}
+            del stock_db[i]
+            return {"message": "Stock item deleted"}
 
     raise HTTPException(status_code=404, detail="Stock item not found")
+
+
+# Очистка для тестов
+@app.post("/clear")
+def clear_all():
+    global store_id_counter, product_id_counter
+    stores_db.clear()
+    products_db.clear()
+    stock_db.clear()
+    store_id_counter = 1
+    product_id_counter = 1
+    return {"message": "All data cleared"}
