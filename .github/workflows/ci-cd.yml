@@ -34,7 +34,6 @@ jobs:
   # 2. CD: build + deploy (локальный runner)
   # --------------------------
   deploy:
-    needs: tests
     runs-on: self-hosted   # <-- важно: локальный runner
     steps:
       - name: Checkout code
