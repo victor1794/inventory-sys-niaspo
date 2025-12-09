@@ -1,84 +1,116 @@
-const API = "http://localhost:8000";
-
-async function loadTables() {
-    loadStores();
-    loadProducts();
-    loadStock();
+async function apiGet(path) {
+    try {
+        const response = await fetch("/api" + path);
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return await response.json();
+    } catch (err) {
+        console.error("GET error:", err);
+        alert("Ошибка запроса GET " + path);
+        return [];
+    }
 }
+
+async function apiPost(path, body) {
+    try {
+        const response = await fetch("/api" + path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return await response.json();
+    } catch (err) {
+        console.error("POST error:", err);
+        alert("Ошибка POST " + path + ": " + err);
+        return null;
+    }
+}
+
+/* ==================== ФИЛИАЛЫ ==================== */
 
 async function loadStores() {
-    let res = await fetch(`${API}/stores`);
-    let data = await res.json();
+    const stores = await apiGet("/stores");
 
-    let tbody = document.querySelector("#stores-table tbody");
-    tbody.innerHTML = "";
-    data.forEach(s => {
-        tbody.innerHTML += `<tr><td>${s.id}</td><td>${s.name}</td><td>${s.city}</td></tr>`;
+    const block = document.getElementById("stores-list");
+    block.innerHTML = "";
+
+    if (stores.length === 0) {
+        block.innerHTML = "<p>Нет филиалов</p>";
+        return;
+    }
+
+    stores.forEach(s => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.textContent = `${s.id}. ${s.name} — ${s.city}`;
+        block.appendChild(div);
     });
 }
-
-async function loadProducts() {
-    let res = await fetch(`${API}/products`);
-    let data = await res.json();
-
-    let tbody = document.querySelector("#products-table tbody");
-    tbody.innerHTML = "";
-    data.forEach(p => {
-        tbody.innerHTML += `<tr><td>${p.id}</td><td>${p.name}</td><td>${p.sku}</td></tr>`;
-    });
-}
-
-async function loadStock() {
-    let res = await fetch(`${API}/stock`);
-    let data = await res.json();
-
-    let tbody = document.querySelector("#stock-table tbody");
-    tbody.innerHTML = "";
-    data.forEach(s => {
-        tbody.innerHTML += `<tr><td>${s.store_id}</td><td>${s.product_id}</td><td>${s.quantity}</td></tr>`;
-    });
-}
-
-// === ACTIONS ===
 
 async function addStore() {
-    let name = document.getElementById("store-name").value;
-    let city = document.getElementById("store-city").value;
+    const name = prompt("Название филиала:");
+    const city = prompt("Город:");
 
-    await fetch(`${API}/stores`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({name, city})
+    if (!name || !city) return;
+
+    await apiPost("/stores", { name, city });
+    await loadStores();
+}
+
+/* ==================== ТОВАРЫ ==================== */
+
+async function loadProducts() {
+    const products = await apiGet("/products");
+
+    const block = document.getElementById("products-list");
+    block.innerHTML = "";
+
+    if (products.length === 0) {
+        block.innerHTML = "<p>Нет товаров</p>";
+        return;
+    }
+
+    products.forEach(p => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.textContent = `${p.id}. ${p.name} (SKU: ${p.sku})`;
+        block.appendChild(div);
     });
-
-    loadTables();
 }
 
 async function addProduct() {
-    let name = document.getElementById("product-name").value;
-    let sku = document.getElementById("product-sku").value;
+    const name = prompt("Название товара:");
+    const sku = prompt("SKU:");
 
-    await fetch(`${API}/products`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({name, sku})
-    });
+    if (!name || !sku) return;
 
-    loadTables();
+    await apiPost("/products", { name, sku });
+    await loadProducts();
 }
 
-async function addStock() {
-    let store_id = Number(document.getElementById("stock-store").value);
-    let product_id = Number(document.getElementById("stock-product").value);
-    let quantity = Number(document.getElementById("stock-qty").value);
+/* ==================== ОСТАТКИ ==================== */
 
-    await fetch(`${API}/stock`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({store_id, product_id, quantity})
+async function showStock() {
+    const storeId = document.getElementById("stock-store-id").value;
+    if (!storeId) {
+        alert("Введите ID филиала!");
+        return;
+    }
+
+    const stock = await apiGet("/stock?store_id=" + storeId);
+
+    const block = document.getElementById("stock-list");
+    block.innerHTML = "";
+
+    if (stock.length === 0) {
+        block.innerHTML = "<p>Остатков нет</p>";
+        return;
+    }
+
+    stock.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.textContent = `Товар ${item.product_id}: ${item.quantity} шт.`;
+        block.appendChild(div);
     });
-
-    loadTables();
 }
-
-loadTables();
