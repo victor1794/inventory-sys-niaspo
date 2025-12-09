@@ -1,11 +1,17 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
-
+from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI(
     title="Retail Inventory Service",
 )
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Для разработки можно разрешить все
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ==========================
 #   СХЕМЫ (Pydantic-модели)
@@ -207,3 +213,16 @@ def dev_reset():
     """
     reset_state_for_tests()
     return {"status": "ok", "message": "All in-memory data cleared"}
+
+
+@app.delete("/stock", status_code=200)
+def delete_stock_item(store_id: int, product_id: int):
+    """
+    Удалить запись об остатках.
+    """
+    for i, item in enumerate(stock):
+        if item.store_id == store_id and item.product_id == product_id:
+            del stock[i]
+            return {"status": "deleted"}
+
+    raise HTTPException(status_code=404, detail="Stock item not found")
