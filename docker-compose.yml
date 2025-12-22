@@ -38,7 +38,7 @@ services:
     build: ./frontend
     container_name: inventory-frontend
     ports:
-      - "80:80"
+      - "30:80"
     networks:
       - frontend_net
       - backend_net
