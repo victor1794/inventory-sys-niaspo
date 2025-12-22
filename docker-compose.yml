@@ -9,7 +9,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://inventory_user:inventory_password@db:5432/inventory_db
     ports:
-      - "8000:8000"
+      - "3000:8000"
     networks:
       - backend_net
       - frontend_net
@@ -30,7 +30,7 @@ services:
     image: adminer
     container_name: inventory-adminer
     ports:
-      - "8080:8080"
+      - "3080:8080"
     networks:
       - backend_net
 
@@ -47,7 +47,7 @@ services:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: inventory-cadvisor
     ports:
-      - "8081:8080"
+      - "3081:8080"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:rw
