@@ -1,28 +1,52 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 
+from sqlalchemy.orm import Session
+
+from db import engine, SessionLocal
+from models import Base, Store, Product, Stock
+
+
+# ---------- ИНИЦИАЛИЗАЦИЯ ----------
+
 app = FastAPI(title="Retail Inventory API")
 
-# --- CORS, чтобы фронт мог ходить на http://localhost:8000 ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # можно сузить до ["http://localhost"]
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ---------- МОДЕЛИ ----------
+# создаём таблицы при старте приложения
+Base.metadata.create_all(bind=engine)
+
+
+# ---------- ЗАВИСИМОСТИ ----------
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# ---------- Pydantic модели ----------
 
 class StoreBase(BaseModel):
     name: str
     city: str
 
 
-class Store(StoreBase):
+class StoreOut(StoreBase):
     id: int
+
+    class Config:
+        orm_mode = True
 
 
 class ProductBase(BaseModel):
@@ -30,8 +54,11 @@ class ProductBase(BaseModel):
     sku: str
 
 
-class Product(ProductBase):
+class ProductOut(ProductBase):
     id: int
+
+    class Config:
+        orm_mode = True
 
 
 class StockBase(BaseModel):
@@ -40,158 +67,154 @@ class StockBase(BaseModel):
     quantity: int
 
 
-class StockItem(StockBase):
-    pass
-
-
-# ---------- "БАЗА ДАННЫХ" В ПАМЯТИ ----------
-
-stores_db: List[Store] = []
-products_db: List[Product] = []
-stock_db: List[StockItem] = []
-
-store_id_counter = 1
-product_id_counter = 1
+class StockOut(StockBase):
+    class Config:
+        orm_mode = True
 
 
 # ---------- СЛУЖЕБНОЕ ----------
 
 @app.get("/")
-def read_root():
-    return {"message": "Retail API работает!"}
+def root():
+    return {"message": "Retail Inventory API работает"}
 
 
 @app.get("/health")
-def health_check():
+def health():
     return {"status": "ok"}
 
 
 # ---------- МАГАЗИНЫ ----------
 
-@app.get("/stores", response_model=List[Store])
-def get_stores():
-    return stores_db
+@app.get("/stores", response_model=List[StoreOut])
+def get_stores(db: Session = Depends(get_db)):
+    return db.query(Store).all()
 
 
-@app.post("/stores", response_model=Store, status_code=201)
-def create_store(store: StoreBase):
-    global store_id_counter
-    new_store = Store(id=store_id_counter, **store.dict())
-    store_id_counter += 1
-    stores_db.append(new_store)
-    return new_store
+@app.post("/stores", response_model=StoreOut, status_code=201)
+def create_store(store: StoreBase, db: Session = Depends(get_db)):
+    db_store = Store(name=store.name, city=store.city)
+    db.add(db_store)
+    db.commit()
+    db.refresh(db_store)
+    return db_store
 
 
 @app.delete("/stores/{store_id}", status_code=204)
-def delete_store(store_id: int):
-    """
-    Удаляем магазин и все связанные с ним остатки.
-    """
-    global stores_db, stock_db
-
-    # магазин
-    before = len(stores_db)
-    stores_db = [s for s in stores_db if s.id != store_id]
-    if len(stores_db) == before:
+def delete_store(store_id: int, db: Session = Depends(get_db)):
+    store = db.query(Store).filter(Store.id == store_id).first()
+    if not store:
         raise HTTPException(status_code=404, detail="Store not found")
 
-    # связанные остатки
-    stock_db = [item for item in stock_db if item.store_id != store_id]
+    db.query(Stock).filter(Stock.store_id == store_id).delete()
+    db.delete(store)
+    db.commit()
     return
 
 
 # ---------- ТОВАРЫ ----------
 
-@app.get("/products", response_model=List[Product])
-def get_products():
-    return products_db
+@app.get("/products", response_model=List[ProductOut])
+def get_products(db: Session = Depends(get_db)):
+    return db.query(Product).all()
 
 
-@app.post("/products", response_model=Product, status_code=201)
-def create_product(product: ProductBase):
-    global product_id_counter
-    new_product = Product(id=product_id_counter, **product.dict())
-    product_id_counter += 1
-    products_db.append(new_product)
-    return new_product
+@app.post("/products", response_model=ProductOut, status_code=201)
+def create_product(product: ProductBase, db: Session = Depends(get_db)):
+    exists = db.query(Product).filter(Product.sku == product.sku).first()
+    if exists:
+        raise HTTPException(status_code=400, detail="SKU already exists")
+
+    db_product = Product(name=product.name, sku=product.sku)
+    db.add(db_product)
+    db.commit()
+    db.refresh(db_product)
+    return db_product
 
 
 @app.delete("/products/{product_id}", status_code=204)
-def delete_product(product_id: int):
-    """
-    Удаляем товар и все связанные с ним остатки.
-    """
-    global products_db, stock_db
-
-    before = len(products_db)
-    products_db = [p for p in products_db if p.id != product_id]
-    if len(products_db) == before:
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    stock_db = [item for item in stock_db if item.product_id != product_id]
+    db.query(Stock).filter(Stock.product_id == product_id).delete()
+    db.delete(product)
+    db.commit()
     return
 
 
 # ---------- ОСТАТКИ ----------
 
-@app.get("/stock", response_model=List[StockItem])
-def get_stock(store_id: Optional[int] = None, product_id: Optional[int] = None):
-    result = stock_db
-
+@app.get("/stock", response_model=List[StockOut])
+def get_stock(
+    store_id: Optional[int] = None,
+    product_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Stock)
     if store_id is not None:
-        result = [item for item in result if item.store_id == store_id]
+        query = query.filter(Stock.store_id == store_id)
     if product_id is not None:
-        result = [item for item in result if item.product_id == product_id]
+        query = query.filter(Stock.product_id == product_id)
+    return query.all()
 
-    return result
 
+@app.post("/stock", response_model=StockOut, status_code=201)
+def upsert_stock(item: StockBase, db: Session = Depends(get_db)):
+    store = db.query(Store).filter(Store.id == item.store_id).first()
+    product = db.query(Product).filter(Product.id == item.product_id).first()
 
-@app.post("/stock", response_model=StockItem, status_code=201)
-def upsert_stock(item: StockBase):
-    # Проверяем существование магазина
-    if not any(s.id == item.store_id for s in stores_db):
-        raise HTTPException(status_code=400, detail="Store not found")
+    if not store or not product:
+        raise HTTPException(status_code=400, detail="Store or Product not found")
 
-    # Проверяем существование товара
-    if not any(p.id == item.product_id for p in products_db):
-        raise HTTPException(status_code=400, detail="Product not found")
+    stock = (
+        db.query(Stock)
+        .filter(
+            Stock.store_id == item.store_id,
+            Stock.product_id == item.product_id
+        )
+        .first()
+    )
 
-    # Ищем существующую запись
-    for stock_item in stock_db:
-        if stock_item.store_id == item.store_id and stock_item.product_id == item.product_id:
-            stock_item.quantity = item.quantity
-            return stock_item
+    if stock:
+        stock.quantity = item.quantity
+    else:
+        stock = Stock(
+            store_id=item.store_id,
+            product_id=item.product_id,
+            quantity=item.quantity
+        )
+        db.add(stock)
 
-    # Если не нашли, добавляем новую
-    new_item = StockItem(**item.dict())
-    stock_db.append(new_item)
-    return new_item
+    db.commit()
+    return stock
 
 
 @app.delete("/stock", status_code=204)
-def delete_stock(store_id: int, product_id: int):
-    """
-    Удалить запись об остатках по паре (store_id, product_id)
-    """
-    for i, item in enumerate(stock_db):
-        if item.store_id == store_id and item.product_id == product_id:
-            del stock_db[i]
-            return
-    raise HTTPException(status_code=404, detail="Stock item not found")
+def delete_stock(store_id: int, product_id: int, db: Session = Depends(get_db)):
+    stock = (
+        db.query(Stock)
+        .filter(
+            Stock.store_id == store_id,
+            Stock.product_id == product_id
+        )
+        .first()
+    )
+    if not stock:
+        raise HTTPException(status_code=404, detail="Stock item not found")
+
+    db.delete(stock)
+    db.commit()
+    return
 
 
-# ---------- ПОЛНАЯ ОЧИСТКА ДЛЯ ДЕВА ----------
+# ---------- DEV-ОЧИСТКА ----------
 
 @app.post("/clear")
-def clear_all():
-    global stores_db, products_db, stock_db
-    global store_id_counter, product_id_counter
-
-    stores_db.clear()
-    products_db.clear()
-    stock_db.clear()
-
-    store_id_counter = 1
-    product_id_counter = 1
-
+def clear_all(db: Session = Depends(get_db)):
+    db.query(Stock).delete()
+    db.query(Store).delete()
+    db.query(Product).delete()
+    db.commit()
     return {"message": "All data cleared"}
