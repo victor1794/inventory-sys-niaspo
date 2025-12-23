@@ -5,8 +5,8 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from db import engine, SessionLocal
-from models import Base, Store, Product, Stock
+from app.db import engine, SessionLocal
+from app.models import Base, Store, Product, Stock
 
 
 # ---------- ИНИЦИАЛИЗАЦИЯ ----------

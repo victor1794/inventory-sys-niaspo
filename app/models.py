@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
-from db import Base
+from app.db import Base
 
 class Store(Base):
     __tablename__ = "stores"
